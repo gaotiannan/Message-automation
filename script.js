@@ -1,5 +1,6 @@
 const CONTACTS_KEY = "outreach_contacts";
 const TEMPLATE_KEY = "outreach_template";
+const SAVED_MESSAGES_KEY = "outreach_saved_messages";
 
 const contactForm = document.getElementById("contactForm");
 const firstNameInput = document.getElementById("firstName");
@@ -8,6 +9,12 @@ const phoneNumberInput = document.getElementById("phoneNumber");
 const notesInput = document.getElementById("notes");
 const preferencesInput = document.getElementById("preferences");
 const formMessagePreview = document.getElementById("formMessagePreview");
+const savedMessageSelect = document.getElementById("savedMessageSelect");
+const savedMessageForm = document.getElementById("savedMessageForm");
+const savedMessageFamily = document.getElementById("savedMessageFamily");
+const savedMessageName = document.getElementById("savedMessageName");
+const savedMessageText = document.getElementById("savedMessageText");
+const savedMessageList = document.getElementById("savedMessageList");
 const familyListEl = document.getElementById("familyList");
 const responseListEl = document.getElementById("responseList");
 const searchInput = document.getElementById("searchInput");
@@ -39,6 +46,15 @@ function saveTemplate(text) {
   localStorage.setItem(TEMPLATE_KEY, text);
 }
 
+function loadSavedMessages() {
+  const raw = localStorage.getItem(SAVED_MESSAGES_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveSavedMessages(messages) {
+  localStorage.setItem(SAVED_MESSAGES_KEY, JSON.stringify(messages));
+}
+
 function normalizePhone(phone) {
   return phone.replace(/[^\d+]/g, "").replace(/^\+/, "");
 }
@@ -66,6 +82,7 @@ function setStatus(id, status) {
 function renderAll() {
   renderFamilyList();
   renderResponseList();
+  renderSavedMessages();
 }
 
 function statusControls(c) {
@@ -110,20 +127,21 @@ function renderFamilyList() {
   });
 
   const sortedFamilyNames = Object.keys(groups).sort((a, b) => a.localeCompare(b));
-  const template = loadTemplate();
+  const defaultTemplate = loadTemplate();
 
   familyListEl.innerHTML = sortedFamilyNames
     .map((familyName) => {
       const members = groups[familyName].sort((a, b) => a.firstName.localeCompare(b.firstName));
       const rows = members
         .map((c) => {
+          const template = c.customTemplate || defaultTemplate;
           const message = buildMessage(template, c.firstName, c.familyName);
           const waLink = `https://wa.me/${normalizePhone(c.phoneNumber)}?text=${encodeURIComponent(message)}`;
           return `
             <div class="contact-row">
               <div class="contact-info">
                 <span class="contact-name">${escapeHtml(c.firstName)}</span>
-                <span class="contact-meta">${escapeHtml(c.phoneNumber)}${c.notes ? " · " + escapeHtml(c.notes) : ""}</span>
+                <span class="contact-meta">${escapeHtml(c.phoneNumber)}${c.notes ? " · " + escapeHtml(c.notes) : ""}${c.customMessageLabel ? " · using \"" + escapeHtml(c.customMessageLabel) + "\"" : ""}</span>
                 <p class="message-preview">${escapeHtml(message)}</p>
               </div>
               <div class="contact-actions">
@@ -182,6 +200,75 @@ function renderResponseList() {
   attachRowListeners(responseListEl);
 }
 
+function renderSavedMessages() {
+  const messages = loadSavedMessages();
+
+  if (messages.length === 0) {
+    savedMessageList.innerHTML = '<p class="empty-state">No saved messages yet.</p>';
+  } else {
+    const groups = {};
+    messages.forEach((m) => {
+      if (!groups[m.familyName]) groups[m.familyName] = [];
+      groups[m.familyName].push(m);
+    });
+    const sortedFamilyNames = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+
+    savedMessageList.innerHTML = sortedFamilyNames
+      .map((familyName) => {
+        const rows = groups[familyName]
+          .map((m) => `
+            <div class="contact-row">
+              <div class="contact-info">
+                <span class="contact-name">${escapeHtml(m.name)}</span>
+                <p class="message-preview">${escapeHtml(m.text)}</p>
+              </div>
+              <div class="contact-actions">
+                <button type="button" class="delete-btn" data-saved-id="${m.id}">Delete</button>
+              </div>
+            </div>
+          `)
+          .join("");
+        return `
+          <div class="family-group">
+            <div class="family-group-header">
+              <span>${escapeHtml(familyName)} Family</span>
+              <span class="family-group-count">${groups[familyName].length} saved</span>
+            </div>
+            ${rows}
+          </div>
+        `;
+      })
+      .join("");
+
+    savedMessageList.querySelectorAll(".delete-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-saved-id");
+        saveSavedMessages(loadSavedMessages().filter((m) => m.id !== id));
+        renderSavedMessages();
+        populateSavedMessageSelect();
+      });
+    });
+  }
+
+  populateSavedMessageSelect();
+}
+
+function populateSavedMessageSelect() {
+  const familyName = familyNameInput.value.trim().toLowerCase();
+  const messages = loadSavedMessages().filter(
+    (m) => !familyName || m.familyName.toLowerCase() === familyName
+  );
+
+  const previousValue = savedMessageSelect.value;
+  savedMessageSelect.innerHTML =
+    '<option value="">Default template</option>' +
+    messages.map((m) => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join("");
+
+  if (messages.some((m) => m.id === previousValue)) {
+    savedMessageSelect.value = previousValue;
+  }
+}
+
 function attachRowListeners(container) {
   container.querySelectorAll(".status-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -204,8 +291,15 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function selectedSavedMessage() {
+  const id = savedMessageSelect.value;
+  if (!id) return null;
+  return loadSavedMessages().find((m) => m.id === id) || null;
+}
+
 function updateFormPreview() {
-  const template = loadTemplate();
+  const saved = selectedSavedMessage();
+  const template = saved ? saved.text : loadTemplate();
   const firstName = firstNameInput.value.trim() || "[name]";
   const familyName = familyNameInput.value.trim() || "[family]";
   formMessagePreview.textContent = buildMessage(template, firstName, familyName);
@@ -213,6 +307,7 @@ function updateFormPreview() {
 
 contactForm.addEventListener("submit", (e) => {
   e.preventDefault();
+  const saved = selectedSavedMessage();
   const contacts = loadContacts();
   contacts.push({
     id: crypto.randomUUID(),
@@ -223,6 +318,8 @@ contactForm.addEventListener("submit", (e) => {
     preferences: preferencesInput.value.trim(),
     status: "pending",
     rejectReason: "",
+    customTemplate: saved ? saved.text : "",
+    customMessageLabel: saved ? saved.name : "",
   });
   saveContacts(contacts);
   contactForm.reset();
@@ -231,7 +328,26 @@ contactForm.addEventListener("submit", (e) => {
 });
 
 firstNameInput.addEventListener("input", updateFormPreview);
-familyNameInput.addEventListener("input", updateFormPreview);
+familyNameInput.addEventListener("input", () => {
+  populateSavedMessageSelect();
+  updateFormPreview();
+});
+savedMessageSelect.addEventListener("change", updateFormPreview);
+
+savedMessageForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const messages = loadSavedMessages();
+  messages.push({
+    id: crypto.randomUUID(),
+    familyName: savedMessageFamily.value.trim(),
+    name: savedMessageName.value.trim(),
+    text: savedMessageText.value.trim(),
+  });
+  saveSavedMessages(messages);
+  savedMessageForm.reset();
+  renderSavedMessages();
+  updateFormPreview();
+});
 
 searchInput.addEventListener("input", renderFamilyList);
 

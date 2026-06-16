@@ -19,6 +19,30 @@
   </section>
 
   <section class="card">
+    <div class="list-header">
+      <h2>Saved Messages</h2>
+      <a href="https://chat.openai.com/" target="_blank" rel="noopener"><button type="button">Open ChatGPT ↗</button></a>
+    </div>
+    <p class="hint">Write a message with ChatGPT, paste it below, name it, and tag it with a family. It'll be reusable for any contact in that family &mdash; no need to go back to ChatGPT next time. Use <code>{name}</code> / <code>{family}</code> as placeholders.</p>
+    <form id="savedMessageForm">
+      <div class="form-row">
+        <label for="savedMessageFamily">Family Name</label>
+        <input type="text" id="savedMessageFamily" required>
+      </div>
+      <div class="form-row">
+        <label for="savedMessageName">Message Label</label>
+        <input type="text" id="savedMessageName" placeholder="e.g. First outreach, Follow-up" required>
+      </div>
+      <div class="form-row">
+        <label for="savedMessageText">Pasted Message</label>
+        <textarea id="savedMessageText" rows="4" required></textarea>
+      </div>
+      <button type="submit">Save Message</button>
+    </form>
+    <div id="savedMessageList"></div>
+  </section>
+
+  <section class="card">
     <h2>Add a Contact</h2>
     <form id="contactForm">
       <div class="form-row">
@@ -40,6 +64,12 @@
       <div class="form-row">
         <label for="preferences">Preferences (optional)</label>
         <input type="text" id="preferences" placeholder="e.g. prefers a family with kids, near downtown...">
+      </div>
+      <div class="form-row">
+        <label for="savedMessageSelect">Use Saved Message (optional)</label>
+        <select id="savedMessageSelect">
+          <option value="">Default template</option>
+        </select>
       </div>
       <p class="hint">Message preview:</p>
       <p id="formMessagePreview" class="message-preview"></p>
