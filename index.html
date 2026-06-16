@@ -19,6 +19,25 @@
   </section>
 
   <section class="card">
+    <h2>Standard Paragraphs</h2>
+    <p class="hint">Reusable blocks (e.g. "Thank you for trusting us.") you can attach to any message. Edit any paragraph and it updates everywhere it's used. Supports <code>{name}</code> / <code>{family}</code>.</p>
+    <form id="paragraphForm">
+      <input type="hidden" id="paragraphEditId" value="">
+      <div class="form-row">
+        <label for="paragraphLabel">Label</label>
+        <input type="text" id="paragraphLabel" placeholder="e.g. Trust, Closing" required>
+      </div>
+      <div class="form-row">
+        <label for="paragraphText">Text</label>
+        <textarea id="paragraphText" rows="3" required></textarea>
+      </div>
+      <button type="submit" id="paragraphSubmitBtn">Save Paragraph</button>
+      <button type="button" id="paragraphCancelBtn" class="secondary-btn" style="display:none;">Cancel Edit</button>
+    </form>
+    <div id="paragraphList"></div>
+  </section>
+
+  <section class="card">
     <div class="list-header">
       <h2>Saved Messages</h2>
       <a href="https://chat.openai.com/" target="_blank" rel="noopener"><button type="button">Open ChatGPT ↗</button></a>
@@ -70,6 +89,10 @@
         <select id="savedMessageSelect">
           <option value="">Default template</option>
         </select>
+      </div>
+      <div class="form-row">
+        <label>Standard Paragraphs to include</label>
+        <div id="paragraphCheckboxes" class="checkbox-list"></div>
       </div>
       <p class="hint">Message preview:</p>
       <p id="formMessagePreview" class="message-preview"></p>

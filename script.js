@@ -1,6 +1,7 @@
 const CONTACTS_KEY = "outreach_contacts";
 const TEMPLATE_KEY = "outreach_template";
 const SAVED_MESSAGES_KEY = "outreach_saved_messages";
+const PARAGRAPHS_KEY = "outreach_paragraphs";
 
 const contactForm = document.getElementById("contactForm");
 const firstNameInput = document.getElementById("firstName");
@@ -15,6 +16,14 @@ const savedMessageFamily = document.getElementById("savedMessageFamily");
 const savedMessageName = document.getElementById("savedMessageName");
 const savedMessageText = document.getElementById("savedMessageText");
 const savedMessageList = document.getElementById("savedMessageList");
+const paragraphForm = document.getElementById("paragraphForm");
+const paragraphEditId = document.getElementById("paragraphEditId");
+const paragraphLabel = document.getElementById("paragraphLabel");
+const paragraphText = document.getElementById("paragraphText");
+const paragraphList = document.getElementById("paragraphList");
+const paragraphSubmitBtn = document.getElementById("paragraphSubmitBtn");
+const paragraphCancelBtn = document.getElementById("paragraphCancelBtn");
+const paragraphCheckboxes = document.getElementById("paragraphCheckboxes");
 const familyListEl = document.getElementById("familyList");
 const responseListEl = document.getElementById("responseList");
 const searchInput = document.getElementById("searchInput");
@@ -55,12 +64,31 @@ function saveSavedMessages(messages) {
   localStorage.setItem(SAVED_MESSAGES_KEY, JSON.stringify(messages));
 }
 
+function loadParagraphs() {
+  const raw = localStorage.getItem(PARAGRAPHS_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveParagraphs(paragraphs) {
+  localStorage.setItem(PARAGRAPHS_KEY, JSON.stringify(paragraphs));
+}
+
 function normalizePhone(phone) {
   return phone.replace(/[^\d+]/g, "").replace(/^\+/, "");
 }
 
 function buildMessage(template, firstName, familyName) {
   return template.replace(/{name}/gi, firstName).replace(/{family}/gi, familyName);
+}
+
+function buildFullMessage(template, firstName, familyName, paragraphIds) {
+  const greeting = buildMessage(template, firstName, familyName);
+  const allParagraphs = loadParagraphs();
+  const paragraphTexts = (paragraphIds || [])
+    .map((id) => allParagraphs.find((p) => p.id === id))
+    .filter(Boolean)
+    .map((p) => buildMessage(p.text, firstName, familyName));
+  return [greeting, ...paragraphTexts].join("\n\n");
 }
 
 function updateContact(id, changes) {
@@ -83,6 +111,7 @@ function renderAll() {
   renderFamilyList();
   renderResponseList();
   renderSavedMessages();
+  renderParagraphs();
 }
 
 function statusControls(c) {
@@ -135,7 +164,7 @@ function renderFamilyList() {
       const rows = members
         .map((c) => {
           const template = c.customTemplate || defaultTemplate;
-          const message = buildMessage(template, c.firstName, c.familyName);
+          const message = buildFullMessage(template, c.firstName, c.familyName, c.paragraphIds);
           const waLink = `https://wa.me/${normalizePhone(c.phoneNumber)}?text=${encodeURIComponent(message)}`;
           return `
             <div class="contact-row">
@@ -269,6 +298,85 @@ function populateSavedMessageSelect() {
   }
 }
 
+function renderParagraphs() {
+  const paragraphs = loadParagraphs();
+
+  if (paragraphs.length === 0) {
+    paragraphList.innerHTML = '<p class="empty-state">No standard paragraphs yet.</p>';
+  } else {
+    paragraphList.innerHTML = paragraphs
+      .map(
+        (p) => `
+          <div class="contact-row">
+            <div class="contact-info">
+              <span class="contact-name">${escapeHtml(p.label)}</span>
+              <p class="message-preview">${escapeHtml(p.text)}</p>
+            </div>
+            <div class="contact-actions">
+              <button type="button" class="status-btn edit-btn" data-edit-id="${p.id}">Edit</button>
+              <button type="button" class="delete-btn" data-paragraph-id="${p.id}">Delete</button>
+            </div>
+          </div>
+        `
+      )
+      .join("");
+
+    paragraphList.querySelectorAll(".edit-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const p = loadParagraphs().find((x) => x.id === btn.getAttribute("data-edit-id"));
+        if (!p) return;
+        paragraphEditId.value = p.id;
+        paragraphLabel.value = p.label;
+        paragraphText.value = p.text;
+        paragraphSubmitBtn.textContent = "Update Paragraph";
+        paragraphCancelBtn.style.display = "inline-block";
+      });
+    });
+
+    paragraphList.querySelectorAll(".delete-btn[data-paragraph-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-paragraph-id");
+        saveParagraphs(loadParagraphs().filter((p) => p.id !== id));
+        renderParagraphs();
+        renderAll();
+      });
+    });
+  }
+
+  renderParagraphCheckboxes();
+}
+
+function renderParagraphCheckboxes() {
+  const paragraphs = loadParagraphs();
+  const previouslyChecked = new Set(
+    Array.from(paragraphCheckboxes.querySelectorAll("input:checked")).map((el) => el.value)
+  );
+
+  if (paragraphs.length === 0) {
+    paragraphCheckboxes.innerHTML = '<span class="hint">No standard paragraphs yet.</span>';
+    return;
+  }
+
+  paragraphCheckboxes.innerHTML = paragraphs
+    .map(
+      (p) => `
+        <label>
+          <input type="checkbox" value="${p.id}" ${previouslyChecked.has(p.id) ? "checked" : ""}>
+          ${escapeHtml(p.label)}
+        </label>
+      `
+    )
+    .join("");
+
+  paragraphCheckboxes.querySelectorAll("input[type=checkbox]").forEach((el) => {
+    el.addEventListener("change", updateFormPreview);
+  });
+}
+
+function getCheckedParagraphIds() {
+  return Array.from(paragraphCheckboxes.querySelectorAll("input:checked")).map((el) => el.value);
+}
+
 function attachRowListeners(container) {
   container.querySelectorAll(".status-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -302,7 +410,7 @@ function updateFormPreview() {
   const template = saved ? saved.text : loadTemplate();
   const firstName = firstNameInput.value.trim() || "[name]";
   const familyName = familyNameInput.value.trim() || "[family]";
-  formMessagePreview.textContent = buildMessage(template, firstName, familyName);
+  formMessagePreview.textContent = buildFullMessage(template, firstName, familyName, getCheckedParagraphIds());
 }
 
 contactForm.addEventListener("submit", (e) => {
@@ -320,6 +428,7 @@ contactForm.addEventListener("submit", (e) => {
     rejectReason: "",
     customTemplate: saved ? saved.text : "",
     customMessageLabel: saved ? saved.name : "",
+    paragraphIds: getCheckedParagraphIds(),
   });
   saveContacts(contacts);
   contactForm.reset();
@@ -348,6 +457,38 @@ savedMessageForm.addEventListener("submit", (e) => {
   renderSavedMessages();
   updateFormPreview();
 });
+
+function resetParagraphForm() {
+  paragraphEditId.value = "";
+  paragraphForm.reset();
+  paragraphSubmitBtn.textContent = "Save Paragraph";
+  paragraphCancelBtn.style.display = "none";
+}
+
+paragraphForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const editId = paragraphEditId.value;
+  const paragraphs = loadParagraphs();
+  if (editId) {
+    const next = paragraphs.map((p) =>
+      p.id === editId ? { ...p, label: paragraphLabel.value.trim(), text: paragraphText.value.trim() } : p
+    );
+    saveParagraphs(next);
+  } else {
+    paragraphs.push({
+      id: crypto.randomUUID(),
+      label: paragraphLabel.value.trim(),
+      text: paragraphText.value.trim(),
+    });
+    saveParagraphs(paragraphs);
+  }
+  resetParagraphForm();
+  renderParagraphs();
+  renderAll();
+  updateFormPreview();
+});
+
+paragraphCancelBtn.addEventListener("click", resetParagraphForm);
 
 searchInput.addEventListener("input", renderFamilyList);
 
