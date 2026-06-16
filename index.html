@@ -37,6 +37,10 @@
         <label for="notes">Notes (optional)</label>
         <input type="text" id="notes">
       </div>
+      <div class="form-row">
+        <label for="preferences">Preferences (optional)</label>
+        <input type="text" id="preferences" placeholder="e.g. prefers a family with kids, near downtown...">
+      </div>
       <button type="submit">Add Contact</button>
     </form>
   </section>
@@ -47,6 +51,12 @@
       <input type="text" id="searchInput" placeholder="Search by name or family...">
     </div>
     <div id="familyList"></div>
+  </section>
+
+  <section class="card">
+    <h2>Responses</h2>
+    <p class="hint">Contacts who accepted, rejected, or ghosted &mdash; with their reasons and preferences, so you can find them a better match.</p>
+    <div id="responseList"></div>
   </section>
 </div>
 

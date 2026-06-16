@@ -170,3 +170,83 @@ button:hover {
   font-size: 14px;
   padding: 8px 0;
 }
+
+.message-preview {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #374151;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 6px 8px;
+  max-width: 380px;
+}
+
+.contact-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.status-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-btn {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.accept-btn {
+  background: #16a34a;
+}
+
+.reject-btn {
+  background: #ef4444;
+}
+
+.ghost-btn {
+  background: #6b7280;
+}
+
+.reset-btn {
+  background: #9ca3af;
+}
+
+.status-badge {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.status-accepted {
+  background: #16a34a;
+}
+
+.status-rejected {
+  background: #ef4444;
+}
+
+.status-ghosted {
+  background: #6b7280;
+}
+
+.response-row .contact-info {
+  gap: 4px;
+}
+
+.reject-reason,
+.preferences-text {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #374151;
+}
+
+.reject-reason {
+  color: #b91c1c;
+}
