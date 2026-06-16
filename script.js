@@ -7,6 +7,7 @@ const familyNameInput = document.getElementById("familyName");
 const phoneNumberInput = document.getElementById("phoneNumber");
 const notesInput = document.getElementById("notes");
 const preferencesInput = document.getElementById("preferences");
+const formMessagePreview = document.getElementById("formMessagePreview");
 const familyListEl = document.getElementById("familyList");
 const responseListEl = document.getElementById("responseList");
 const searchInput = document.getElementById("searchInput");
@@ -203,6 +204,13 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+function updateFormPreview() {
+  const template = loadTemplate();
+  const firstName = firstNameInput.value.trim() || "[name]";
+  const familyName = familyNameInput.value.trim() || "[family]";
+  formMessagePreview.textContent = buildMessage(template, firstName, familyName);
+}
+
 contactForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const contacts = loadContacts();
@@ -219,7 +227,11 @@ contactForm.addEventListener("submit", (e) => {
   saveContacts(contacts);
   contactForm.reset();
   renderAll();
+  updateFormPreview();
 });
+
+firstNameInput.addEventListener("input", updateFormPreview);
+familyNameInput.addEventListener("input", updateFormPreview);
 
 searchInput.addEventListener("input", renderFamilyList);
 
@@ -228,8 +240,13 @@ saveTemplateBtn.addEventListener("click", () => {
   templateSavedMsg.textContent = "Saved!";
   setTimeout(() => (templateSavedMsg.textContent = ""), 1500);
   renderFamilyList();
+  updateFormPreview();
 });
 
 templateInput.value = loadTemplate();
-templateInput.addEventListener("input", renderFamilyList);
+templateInput.addEventListener("input", () => {
+  renderFamilyList();
+  updateFormPreview();
+});
 renderAll();
+updateFormPreview();
