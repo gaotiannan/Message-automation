@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outreach Message Helper</title>
+<link rel="stylesheet" href="Style.css">
+</head>
+<body>
+<div class="container">
+  <h1>Outreach Message Helper</h1>
+
+  <section class="card">
+    <h2>Message Template</h2>
+    <p class="hint">Use <code>{name}</code> for first name and <code>{family}</code> for family name.</p>
+    <textarea id="templateInput" rows="4">Hi {name}, I hope this message finds the {family} family well!</textarea>
+    <button id="saveTemplateBtn">Save Template</button>
+    <span id="templateSavedMsg" class="saved-msg"></span>
+  </section>
+
+  <section class="card">
+    <h2>Add a Contact</h2>
+    <form id="contactForm">
+      <div class="form-row">
+        <label for="firstName">First Name</label>
+        <input type="text" id="firstName" required>
+      </div>
+      <div class="form-row">
+        <label for="familyName">Family Name</label>
+        <input type="text" id="familyName" required>
+      </div>
+      <div class="form-row">
+        <label for="phoneNumber">WhatsApp Number</label>
+        <input type="text" id="phoneNumber" placeholder="e.g. +14155551234" required>
+      </div>
+      <div class="form-row">
+        <label for="notes">Notes (optional)</label>
+        <input type="text" id="notes">
+      </div>
+      <button type="submit">Add Contact</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="list-header">
+      <h2>Families</h2>
+      <input type="text" id="searchInput" placeholder="Search by name or family...">
+    </div>
+    <div id="familyList"></div>
+  </section>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
