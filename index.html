@@ -114,6 +114,70 @@
   </section>
 </div>
 
+<!-- Au Pair Tracker Panel -->
+<button id="apToggle" class="ap-toggle">Au Pairs</button>
+
+<div id="apPanel" class="ap-panel" style="display:none;">
+  <div class="chat-panel-header">
+    <span>Au Pair Profiles</span>
+    <button id="apClose" type="button">✕</button>
+  </div>
+
+  <div class="ap-form-area" id="apFormArea">
+    <button type="button" id="apAddBtn" class="ap-add-btn">+ Add Au Pair</button>
+    <form id="apForm" style="display:none;">
+      <input type="hidden" id="apEditId">
+      <div class="form-row">
+        <label for="apName">Name</label>
+        <input type="text" id="apName" required>
+      </div>
+      <div class="form-row">
+        <label for="apAge">Age</label>
+        <input type="text" id="apAge" placeholder="e.g. 22">
+      </div>
+      <div class="form-row">
+        <label for="apNationality">Nationality</label>
+        <input type="text" id="apNationality" placeholder="e.g. Spanish">
+      </div>
+      <div class="form-row">
+        <label for="apLanguages">Languages</label>
+        <input type="text" id="apLanguages" placeholder="e.g. English, Spanish">
+      </div>
+      <div class="form-row">
+        <label for="apSkills">Skills / Hobbies</label>
+        <input type="text" id="apSkills" placeholder="e.g. cooking, swimming, driving">
+      </div>
+      <div class="form-row">
+        <label for="apExperience">Childcare Experience</label>
+        <textarea id="apExperience" rows="2" placeholder="e.g. 2 years babysitting, 1 year au pair in UK"></textarea>
+      </div>
+      <div class="form-row">
+        <label for="apAvailability">Availability</label>
+        <input type="text" id="apAvailability" placeholder="e.g. from July 2025, 12 months">
+      </div>
+      <div class="form-row">
+        <label for="apStatus">Status</label>
+        <select id="apStatus">
+          <option value="Available">Available</option>
+          <option value="Interview">Interview stage</option>
+          <option value="Placed">Placed</option>
+          <option value="On hold">On hold</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label for="apNotes">Notes</label>
+        <textarea id="apNotes" rows="2" placeholder="Any extra notes…"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button type="submit" id="apSaveBtn">Save</button>
+        <button type="button" id="apCancelBtn" class="secondary-btn">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="apList" class="ap-list"></div>
+</div>
+
 <!-- AI Chat Widget -->
 <button id="chatToggle" class="chat-toggle">AI Help</button>
 
@@ -123,9 +187,9 @@
     <button id="chatClose" type="button">✕</button>
   </div>
   <div id="chatApiKeySection" class="chat-api-key-section">
-    <p class="hint" style="margin:0 0 6px;">Enter your OpenAI API key to get started:</p>
+    <p class="hint" style="margin:0 0 6px;">Enter your Anthropic API key (get one free at console.anthropic.com):</p>
     <div style="display:flex;gap:6px;">
-      <input type="password" id="chatApiKey" placeholder="sk-...">
+      <input type="password" id="chatApiKey" placeholder="sk-ant-...">
       <button type="button" id="chatSaveKey">Save</button>
     </div>
   </div>

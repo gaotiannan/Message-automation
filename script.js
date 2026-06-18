@@ -510,8 +510,8 @@ updateFormPreview();
 
 // ── AI Chat Widget ──────────────────────────────────────────────────────────
 
-const CHAT_API_KEY_STORAGE = "chat_openai_api_key";
-const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+const CHAT_API_KEY_STORAGE = "chat_claude_api_key";
+const CLAUDE_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const CHAT_SYSTEM_PROMPT =
   "You are an AI assistant helping craft WhatsApp outreach messages to contact families. " +
   "Help the user write warm, personalized messages. Keep suggestions concise and practical. " +
@@ -568,18 +568,19 @@ async function sendChat() {
   chatSendBtn.disabled = true;
 
   try {
-    const res = await fetch(OPENAI_ENDPOINT, {
+    const res = await fetch(CLAUDE_ENDPOINT, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-client-side-api-key-access": "true",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: CHAT_SYSTEM_PROMPT },
-          ...chatHistory,
-        ],
+        model: "claude-haiku-4-5",
+        max_tokens: 1024,
+        system: CHAT_SYSTEM_PROMPT,
+        messages: chatHistory,
       }),
     });
 
@@ -592,7 +593,7 @@ async function sendChat() {
       appendChatMessage("error", `Error: ${errMsg}`);
       chatHistory.pop();
     } else {
-      const reply = data.choices?.[0]?.message?.content || "(no response)";
+      const reply = data.content?.[0]?.text || "(no response)";
       appendChatMessage("assistant", reply);
       chatHistory.push({ role: "assistant", content: reply });
     }
@@ -620,8 +621,8 @@ chatCloseBtn.addEventListener("click", () => {
 
 chatSaveKeyBtn.addEventListener("click", () => {
   const key = chatApiKeyInput.value.trim();
-  if (!key.startsWith("sk-")) {
-    alert("That doesn't look like a valid OpenAI key — it should start with sk-");
+  if (!key.startsWith("sk-ant-")) {
+    alert("That doesn't look like a valid Anthropic key — it should start with sk-ant-");
     return;
   }
   saveApiKey(key);
@@ -635,4 +636,151 @@ chatInput.addEventListener("keydown", (e) => {
     e.preventDefault();
     sendChat();
   }
+});
+
+// ── Au Pair Tracker ──────────────────────────────────────────────────────────
+
+const AU_PAIRS_KEY = "outreach_au_pairs";
+
+const apToggleBtn  = document.getElementById("apToggle");
+const apPanel      = document.getElementById("apPanel");
+const apCloseBtn   = document.getElementById("apClose");
+const apAddBtn     = document.getElementById("apAddBtn");
+const apForm       = document.getElementById("apForm");
+const apCancelBtn  = document.getElementById("apCancelBtn");
+const apEditIdEl   = document.getElementById("apEditId");
+const apNameEl     = document.getElementById("apName");
+const apAgeEl      = document.getElementById("apAge");
+const apNatEl      = document.getElementById("apNationality");
+const apLangEl     = document.getElementById("apLanguages");
+const apSkillsEl   = document.getElementById("apSkills");
+const apExpEl      = document.getElementById("apExperience");
+const apAvailEl    = document.getElementById("apAvailability");
+const apStatusEl   = document.getElementById("apStatus");
+const apNotesEl    = document.getElementById("apNotes");
+const apListEl     = document.getElementById("apList");
+
+const AP_STATUS_CLASS = {
+  "Available":      "status-ap-available",
+  "Interview":      "status-ap-interview",
+  "Placed":         "status-ap-placed",
+  "On hold":        "status-ap-on-hold",
+};
+
+function loadAuPairs() {
+  const raw = localStorage.getItem(AU_PAIRS_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+function saveAuPairs(list) {
+  localStorage.setItem(AU_PAIRS_KEY, JSON.stringify(list));
+}
+
+function renderAuPairs() {
+  const list = loadAuPairs();
+  if (list.length === 0) {
+    apListEl.innerHTML = '<p class="empty-state">No au pairs yet. Click + Add Au Pair above.</p>';
+    return;
+  }
+  apListEl.innerHTML = list.map((ap) => `
+    <div class="ap-card">
+      <div class="ap-card-header">
+        <span class="ap-card-name">${escapeHtml(ap.name)}</span>
+        <div class="ap-card-actions">
+          <button type="button" class="edit-btn" data-ap-edit="${ap.id}">Edit</button>
+          <button type="button" class="delete-btn" data-ap-del="${ap.id}">Delete</button>
+        </div>
+      </div>
+      <span class="status-badge-ap ${AP_STATUS_CLASS[ap.status] || 'status-ap-available'}">${escapeHtml(ap.status)}</span>
+      <div class="ap-card-meta">
+        ${ap.age ? `<span>Age: ${escapeHtml(ap.age)}</span>` : ""}
+        ${ap.nationality ? ` · ${escapeHtml(ap.nationality)}` : ""}
+        ${ap.languages ? `<br>Languages: ${escapeHtml(ap.languages)}` : ""}
+        ${ap.skills ? `<br>Skills: ${escapeHtml(ap.skills)}` : ""}
+        ${ap.experience ? `<br>Experience: ${escapeHtml(ap.experience)}` : ""}
+        ${ap.availability ? `<br>Available: ${escapeHtml(ap.availability)}` : ""}
+      </div>
+      ${ap.notes ? `<p class="ap-card-notes">${escapeHtml(ap.notes)}</p>` : ""}
+    </div>
+  `).join("");
+
+  apListEl.querySelectorAll("[data-ap-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const ap = loadAuPairs().find((x) => x.id === btn.getAttribute("data-ap-edit"));
+      if (!ap) return;
+      apEditIdEl.value = ap.id;
+      apNameEl.value = ap.name || "";
+      apAgeEl.value = ap.age || "";
+      apNatEl.value = ap.nationality || "";
+      apLangEl.value = ap.languages || "";
+      apSkillsEl.value = ap.skills || "";
+      apExpEl.value = ap.experience || "";
+      apAvailEl.value = ap.availability || "";
+      apStatusEl.value = ap.status || "Available";
+      apNotesEl.value = ap.notes || "";
+      apForm.style.display = "block";
+      apAddBtn.style.display = "none";
+      apNameEl.focus();
+    });
+  });
+
+  apListEl.querySelectorAll("[data-ap-del]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-ap-del");
+      saveAuPairs(loadAuPairs().filter((x) => x.id !== id));
+      renderAuPairs();
+    });
+  });
+}
+
+function resetApForm() {
+  apForm.reset();
+  apEditIdEl.value = "";
+  apForm.style.display = "none";
+  apAddBtn.style.display = "block";
+}
+
+apAddBtn.addEventListener("click", () => {
+  resetApForm();
+  apForm.style.display = "block";
+  apAddBtn.style.display = "none";
+  apNameEl.focus();
+});
+
+apCancelBtn.addEventListener("click", resetApForm);
+
+apForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const list = loadAuPairs();
+  const editId = apEditIdEl.value;
+  const entry = {
+    id: editId || crypto.randomUUID(),
+    name: apNameEl.value.trim(),
+    age: apAgeEl.value.trim(),
+    nationality: apNatEl.value.trim(),
+    languages: apLangEl.value.trim(),
+    skills: apSkillsEl.value.trim(),
+    experience: apExpEl.value.trim(),
+    availability: apAvailEl.value.trim(),
+    status: apStatusEl.value,
+    notes: apNotesEl.value.trim(),
+  };
+  if (editId) {
+    saveAuPairs(list.map((x) => (x.id === editId ? entry : x)));
+  } else {
+    list.push(entry);
+    saveAuPairs(list);
+  }
+  resetApForm();
+  renderAuPairs();
+});
+
+apToggleBtn.addEventListener("click", () => {
+  const open = apPanel.style.display !== "none";
+  apPanel.style.display = open ? "none" : "flex";
+  if (!open) renderAuPairs();
+});
+
+apCloseBtn.addEventListener("click", () => {
+  apPanel.style.display = "none";
 });

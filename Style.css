@@ -287,6 +287,141 @@ button:hover {
   background: #2563eb;
 }
 
+/* Au Pair Tracker Panel */
+.ap-toggle {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  background: #7c3aed;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.ap-toggle:hover {
+  background: #6d28d9;
+}
+
+.ap-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 320px;
+  height: 100vh;
+  background: #fff;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ap-panel .chat-panel-header {
+  background: #7c3aed;
+  flex-shrink: 0;
+}
+
+.ap-form-area {
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+.ap-add-btn {
+  background: #7c3aed;
+  width: 100%;
+}
+
+.ap-add-btn:hover {
+  background: #6d28d9;
+}
+
+.ap-form-area .form-row {
+  margin-bottom: 8px;
+}
+
+.ap-form-area label {
+  font-size: 12px;
+}
+
+.ap-form-area input,
+.ap-form-area textarea,
+.ap-form-area select {
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.ap-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ap-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.ap-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.ap-card-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.ap-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ap-card-actions button {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.ap-card-meta {
+  font-size: 12px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.ap-card-notes {
+  font-size: 12px;
+  color: #374151;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.status-badge-ap {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.status-ap-available { background: #16a34a; }
+.status-ap-interview { background: #f59e0b; }
+.status-ap-placed    { background: #3b82f6; }
+.status-ap-on-hold   { background: #6b7280; }
+
 /* AI Chat Widget */
 .chat-toggle {
   position: fixed;
