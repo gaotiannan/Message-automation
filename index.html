@@ -40,9 +40,8 @@
   <section class="card">
     <div class="list-header">
       <h2>Saved Messages</h2>
-      <a href="https://chat.openai.com/" target="_blank" rel="noopener"><button type="button">Open ChatGPT ↗</button></a>
     </div>
-    <p class="hint">Use ChatGPT to draft a message, copy it, then paste below. Name it and tag it with a family so you can reuse it. Use <code>{name}</code> / <code>{family}</code> as placeholders.</p>
+    <p class="hint">Use the AI assistant (bottom-right) to draft a message, then paste it below. Use <code>{name}</code> / <code>{family}</code> as placeholders.</p>
     <form id="savedMessageForm">
       <div class="form-row">
         <label for="savedMessageFamily">Family Name</label>
@@ -85,6 +84,12 @@
         <input type="text" id="preferences" placeholder="e.g. prefers a family with kids, near downtown...">
       </div>
       <div class="form-row">
+        <label for="auPairSelect">For Au Pair (optional)</label>
+        <select id="auPairSelect">
+          <option value="">— not linked —</option>
+        </select>
+      </div>
+      <div class="form-row">
         <label for="savedMessageSelect">Use Saved Message (optional)</label>
         <select id="savedMessageSelect">
           <option value="">Default template</option>
@@ -124,6 +129,9 @@
     <button id="apClose" type="button">✕</button>
   </div>
 
+  <div class="ap-search-area">
+    <input type="text" id="apSearch" placeholder="Search by name…">
+  </div>
   <div class="ap-form-area" id="apFormArea">
     <button type="button" id="apAddBtn" class="ap-add-btn">+ Add Au Pair</button>
     <form id="apForm" style="display:none;">
@@ -177,6 +185,32 @@
   </div>
 
   <div id="apList" class="ap-list"></div>
+</div>
+
+<!-- AI Chat Widget -->
+<button id="chatToggle" class="chat-toggle">AI Help</button>
+
+<div id="chatPanel" class="chat-panel" style="display:none;">
+  <div class="chat-panel-header">
+    <span>AI Message Assistant</span>
+    <button id="chatClose" type="button">✕</button>
+  </div>
+  <div id="chatApiKeySection" class="chat-api-key-section">
+    <p class="hint" style="margin:0 0 6px;">Anthropic API key (<a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#25d366;">get key</a>):</p>
+    <div style="display:flex;gap:6px;">
+      <input type="password" id="chatApiKey" placeholder="sk-ant-...">
+      <button type="button" id="chatSaveKey">Save</button>
+    </div>
+  </div>
+  <div id="chatKeyStatus" class="chat-key-status" style="display:none;">
+    <span id="chatKeyLabel"></span>
+    <button type="button" id="chatChangeKey">Change key</button>
+  </div>
+  <div id="chatMessages" class="chat-messages"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Ask me to help craft a message…">
+    <button type="button" id="chatSend">Send</button>
+  </div>
 </div>
 
 <script src="script.js"></script>

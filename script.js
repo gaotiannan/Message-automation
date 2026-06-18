@@ -10,6 +10,7 @@ const phoneNumberInput = document.getElementById("phoneNumber");
 const notesInput = document.getElementById("notes");
 const preferencesInput = document.getElementById("preferences");
 const formMessagePreview = document.getElementById("formMessagePreview");
+const auPairSelect = document.getElementById("auPairSelect");
 const savedMessageSelect = document.getElementById("savedMessageSelect");
 const savedMessageForm = document.getElementById("savedMessageForm");
 const savedMessageFamily = document.getElementById("savedMessageFamily");
@@ -77,6 +78,13 @@ function normalizePhone(phone) {
   return phone.replace(/[^\d+]/g, "").replace(/^\+/, "");
 }
 
+function formatDate(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
 function buildMessage(template, firstName, familyName) {
   return template.replace(/{name}/gi, firstName).replace(/{family}/gi, familyName);
 }
@@ -99,11 +107,14 @@ function updateContact(id, changes) {
 }
 
 function setStatus(id, status) {
+  const now = Date.now();
   if (status === "rejected") {
     const reason = window.prompt("Why did they reject? (this will be saved for future matching)") || "";
-    updateContact(id, { status, rejectReason: reason });
+    updateContact(id, { status, rejectReason: reason, statusChangedAt: now });
+  } else if (status === "pending") {
+    updateContact(id, { status, rejectReason: "", statusChangedAt: null });
   } else {
-    updateContact(id, { status, rejectReason: "" });
+    updateContact(id, { status, statusChangedAt: now });
   }
 }
 
@@ -155,26 +166,37 @@ function renderFamilyList() {
     groups[c.familyName].push(c);
   });
 
-  const sortedFamilyNames = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+  // Sort families by most recent contact activity
+  const sortedFamilyNames = Object.keys(groups).sort((a, b) => {
+    const latestA = Math.max(...groups[a].map((c) => c.createdAt || 0));
+    const latestB = Math.max(...groups[b].map((c) => c.createdAt || 0));
+    return latestB - latestA;
+  });
   const defaultTemplate = loadTemplate();
+  const allAuPairs = loadAuPairs();
 
   familyListEl.innerHTML = sortedFamilyNames
     .map((familyName) => {
-      const members = groups[familyName].sort((a, b) => a.firstName.localeCompare(b.firstName));
+      // Sort contacts within each family by createdAt descending (newest first)
+      const members = groups[familyName].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
       const rows = members
         .map((c) => {
           const template = c.customTemplate || defaultTemplate;
           const message = buildFullMessage(template, c.firstName, c.familyName, c.paragraphIds);
           const waLink = `https://wa.me/${normalizePhone(c.phoneNumber)}?text=${encodeURIComponent(message)}`;
+          const linkedAp = allAuPairs.find((ap) => ap.id === c.auPairId);
           return `
             <div class="contact-row">
               <div class="contact-info">
                 <span class="contact-name">${escapeHtml(c.firstName)}</span>
                 <span class="contact-meta">${escapeHtml(c.phoneNumber)}${c.notes ? " · " + escapeHtml(c.notes) : ""}${c.customMessageLabel ? " · using \"" + escapeHtml(c.customMessageLabel) + "\"" : ""}</span>
+                ${c.createdAt ? `<span class="contact-date">Added: ${formatDate(c.createdAt)}</span>` : ""}
+                ${c.statusChangedAt && c.status !== "pending" ? `<span class="contact-date">${escapeHtml(c.status)}: ${formatDate(c.statusChangedAt)}</span>` : ""}
                 <p class="message-preview">${escapeHtml(message)}</p>
               </div>
               <div class="contact-actions">
                 <a href="${waLink}" target="_blank" rel="noopener"><button type="button" class="send-btn">Send</button></a>
+                ${linkedAp ? `<button type="button" class="ap-link-btn" data-ap-id="${linkedAp.id}">→ ${escapeHtml(linkedAp.name)}</button>` : ""}
                 ${statusControls(c)}
                 <button type="button" class="delete-btn" data-id="${c.id}">Delete</button>
               </div>
@@ -195,6 +217,9 @@ function renderFamilyList() {
     })
     .join("");
 
+  familyListEl.querySelectorAll(".ap-link-btn").forEach((btn) => {
+    btn.addEventListener("click", () => openAndHighlightAuPair(btn.getAttribute("data-ap-id")));
+  });
   attachRowListeners(familyListEl);
 }
 
@@ -215,6 +240,7 @@ function renderResponseList() {
           <div class="contact-info">
             <span class="contact-name">${escapeHtml(c.firstName)} <span class="contact-meta">(${escapeHtml(c.familyName)} family)</span></span>
             <span class="status-badge status-${c.status}">${STATUS_LABELS[c.status]}</span>
+            ${c.statusChangedAt ? `<span class="contact-date">${formatDate(c.statusChangedAt)}</span>` : ""}
             ${c.status === "rejected" && c.rejectReason ? `<p class="reject-reason">Reason: ${escapeHtml(c.rejectReason)}</p>` : ""}
             ${c.preferences ? `<p class="preferences-text">Preferences: ${escapeHtml(c.preferences)}</p>` : ""}
           </div>
@@ -429,6 +455,9 @@ contactForm.addEventListener("submit", (e) => {
     customTemplate: saved ? saved.text : "",
     customMessageLabel: saved ? saved.name : "",
     paragraphIds: getCheckedParagraphIds(),
+    auPairId: auPairSelect.value || "",
+    createdAt: Date.now(),
+    statusChangedAt: null,
   });
   saveContacts(contacts);
   contactForm.reset();
@@ -507,12 +536,114 @@ templateInput.addEventListener("input", () => {
 });
 renderAll();
 updateFormPreview();
+populateAuPairSelect();
+
+// ── AI Chat Widget ──────────────────────────────────────────────────────────
+
+const CHAT_API_KEY_STORAGE = "chat_claude_api_key";
+const CHAT_SYSTEM_PROMPT =
+  "You are an AI assistant helping craft WhatsApp outreach messages to contact families for au pair placement. " +
+  "Help the user write warm, personalized messages. Keep suggestions concise and practical. " +
+  "When the user asks for a message, produce ready-to-paste text they can save to the Saved Messages section. " +
+  "You can use {name} and {family} as placeholders for the contact's first name and family name.";
+
+const chatToggleBtn  = document.getElementById("chatToggle");
+const chatPanel      = document.getElementById("chatPanel");
+const chatCloseBtn   = document.getElementById("chatClose");
+const chatApiKeySection = document.getElementById("chatApiKeySection");
+const chatApiKeyInput   = document.getElementById("chatApiKey");
+const chatSaveKeyBtn    = document.getElementById("chatSaveKey");
+const chatKeyStatus     = document.getElementById("chatKeyStatus");
+const chatKeyLabel      = document.getElementById("chatKeyLabel");
+const chatChangeKeyBtn  = document.getElementById("chatChangeKey");
+const chatMessagesEl    = document.getElementById("chatMessages");
+const chatInput         = document.getElementById("chatInput");
+const chatSendBtn       = document.getElementById("chatSend");
+
+const chatHistory = [];
+
+function loadApiKey() { return localStorage.getItem(CHAT_API_KEY_STORAGE) || ""; }
+function saveApiKey(key) { localStorage.setItem(CHAT_API_KEY_STORAGE, key.trim()); }
+
+function refreshApiKeySection() {
+  const key = loadApiKey();
+  if (key) {
+    chatApiKeySection.style.display = "none";
+    chatKeyStatus.style.display = "flex";
+    chatKeyLabel.textContent = "Key: " + key.slice(0, 14) + "…";
+  } else {
+    chatApiKeySection.style.display = "block";
+    chatKeyStatus.style.display = "none";
+  }
+}
+
+function appendChatMsg(role, text) {
+  const div = document.createElement("div");
+  div.className = `chat-msg chat-msg-${role}`;
+  div.textContent = text;
+  chatMessagesEl.appendChild(div);
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const apiKey = loadApiKey();
+  if (!apiKey) { appendChatMsg("error", "Please save your Anthropic API key first."); return; }
+  const userText = chatInput.value.trim();
+  if (!userText) return;
+  chatInput.value = "";
+  appendChatMsg("user", userText);
+  chatHistory.push({ role: "user", content: userText });
+  const thinking = appendChatMsg("thinking", "Thinking…");
+  chatSendBtn.disabled = true;
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ api_key: apiKey, system: CHAT_SYSTEM_PROMPT, messages: chatHistory }),
+    });
+    const data = await res.json();
+    chatMessagesEl.removeChild(thinking);
+    if (!res.ok) {
+      appendChatMsg("error", `Error: ${data?.error?.message || "API error " + res.status}`);
+      chatHistory.pop();
+    } else {
+      const reply = data.content?.[0]?.text || "(no response)";
+      appendChatMsg("assistant", reply);
+      chatHistory.push({ role: "assistant", content: reply });
+    }
+  } catch (err) {
+    chatMessagesEl.removeChild(thinking);
+    appendChatMsg("error", `Network error: ${err.message}`);
+    chatHistory.pop();
+  } finally {
+    chatSendBtn.disabled = false;
+  }
+}
+
+chatToggleBtn.addEventListener("click", () => {
+  const open = chatPanel.style.display !== "none";
+  chatPanel.style.display = open ? "none" : "flex";
+  if (!open) { refreshApiKeySection(); chatInput.focus(); }
+});
+chatCloseBtn.addEventListener("click", () => { chatPanel.style.display = "none"; });
+chatSaveKeyBtn.addEventListener("click", () => {
+  const key = chatApiKeyInput.value.trim();
+  if (!key.startsWith("sk-ant-")) { alert("Anthropic keys start with sk-ant-"); return; }
+  saveApiKey(key); chatApiKeyInput.value = ""; refreshApiKeySection();
+});
+chatChangeKeyBtn.addEventListener("click", () => {
+  localStorage.removeItem(CHAT_API_KEY_STORAGE); chatApiKeyInput.value = ""; refreshApiKeySection(); chatApiKeyInput.focus();
+});
+chatSendBtn.addEventListener("click", sendChat);
+chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } });
 
 // ── Au Pair Tracker ──────────────────────────────────────────────────────────
 
 const AU_PAIRS_KEY = "outreach_au_pairs";
 
 const apToggleBtn  = document.getElementById("apToggle");
+const apSearch     = document.getElementById("apSearch");
 const apPanel      = document.getElementById("apPanel");
 const apCloseBtn   = document.getElementById("apClose");
 const apAddBtn     = document.getElementById("apAddBtn");
@@ -546,14 +677,40 @@ function saveAuPairs(list) {
   localStorage.setItem(AU_PAIRS_KEY, JSON.stringify(list));
 }
 
-function renderAuPairs() {
+function populateAuPairSelect() {
   const list = loadAuPairs();
+  const prev = auPairSelect.value;
+  auPairSelect.innerHTML = '<option value="">— not linked —</option>'
+    + list.map((ap) => `<option value="${ap.id}">${escapeHtml(ap.name)}</option>`).join("");
+  if (list.some((ap) => ap.id === prev)) auPairSelect.value = prev;
+}
+
+function openAndHighlightAuPair(apId) {
+  apPanel.style.display = "flex";
+  apSearch.value = "";
+  renderAuPairs();
+  requestAnimationFrame(() => {
+    const card = apListEl.querySelector(`[data-ap-card="${apId}"]`);
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.classList.add("highlighted");
+      card.addEventListener("animationend", () => card.classList.remove("highlighted"), { once: true });
+    }
+  });
+}
+
+function renderAuPairs() {
+  const query = apSearch ? apSearch.value.trim().toLowerCase() : "";
+  const list = loadAuPairs().filter((ap) =>
+    !query || ap.name.toLowerCase().includes(query)
+  );
+  populateAuPairSelect();
   if (list.length === 0) {
-    apListEl.innerHTML = '<p class="empty-state">No au pairs yet. Click + Add Au Pair above.</p>';
+    apListEl.innerHTML = `<p class="empty-state">${query ? "No au pairs match your search." : "No au pairs yet. Click + Add Au Pair above."}</p>`;
     return;
   }
   apListEl.innerHTML = list.map((ap) => `
-    <div class="ap-card">
+    <div class="ap-card" data-ap-card="${ap.id}">
       <div class="ap-card-header">
         <span class="ap-card-name">${escapeHtml(ap.name)}</span>
         <div class="ap-card-actions">
@@ -571,6 +728,7 @@ function renderAuPairs() {
         ${ap.availability ? `<br>Available: ${escapeHtml(ap.availability)}` : ""}
       </div>
       ${ap.notes ? `<p class="ap-card-notes">${escapeHtml(ap.notes)}</p>` : ""}
+      ${ap.createdAt ? `<p class="ap-card-date">Added: ${formatDate(ap.createdAt)}</p>` : ""}
     </div>
   `).join("");
 
@@ -623,6 +781,7 @@ apForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const list = loadAuPairs();
   const editId = apEditIdEl.value;
+  const existing = editId ? loadAuPairs().find((x) => x.id === editId) : null;
   const entry = {
     id: editId || crypto.randomUUID(),
     name: apNameEl.value.trim(),
@@ -634,6 +793,7 @@ apForm.addEventListener("submit", (e) => {
     availability: apAvailEl.value.trim(),
     status: apStatusEl.value,
     notes: apNotesEl.value.trim(),
+    createdAt: existing?.createdAt || Date.now(),
   };
   if (editId) {
     saveAuPairs(list.map((x) => (x.id === editId ? entry : x)));
@@ -645,10 +805,12 @@ apForm.addEventListener("submit", (e) => {
   renderAuPairs();
 });
 
+apSearch.addEventListener("input", renderAuPairs);
+
 apToggleBtn.addEventListener("click", () => {
   const open = apPanel.style.display !== "none";
   apPanel.style.display = open ? "none" : "flex";
-  if (!open) renderAuPairs();
+  if (!open) { apSearch.value = ""; renderAuPairs(); }
 });
 
 apCloseBtn.addEventListener("click", () => {
