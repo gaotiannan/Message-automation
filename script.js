@@ -198,6 +198,7 @@ function renderFamilyList() {
                 <a href="${waLink}" target="_blank" rel="noopener"><button type="button" class="send-btn">Send</button></a>
                 ${linkedAp ? `<button type="button" class="ap-link-btn" data-ap-id="${linkedAp.id}">→ ${escapeHtml(linkedAp.name)}</button>` : ""}
                 ${statusControls(c)}
+                <button type="button" class="edit-contact-btn" data-edit-contact="${c.id}">Edit</button>
                 <button type="button" class="delete-btn" data-id="${c.id}">Delete</button>
               </div>
             </div>
@@ -219,6 +220,9 @@ function renderFamilyList() {
 
   familyListEl.querySelectorAll(".ap-link-btn").forEach((btn) => {
     btn.addEventListener("click", () => openAndHighlightAuPair(btn.getAttribute("data-ap-id")));
+  });
+  familyListEl.querySelectorAll(".edit-contact-btn").forEach((btn) => {
+    btn.addEventListener("click", () => startEditContact(btn.getAttribute("data-edit-contact")));
   });
   attachRowListeners(familyListEl);
 }
@@ -439,10 +443,71 @@ function updateFormPreview() {
   formMessagePreview.textContent = buildFullMessage(template, firstName, familyName, getCheckedParagraphIds());
 }
 
+const editContactIdEl      = document.getElementById("editContactId");
+const contactSubmitBtn     = document.getElementById("contactSubmitBtn");
+const contactCancelEditBtn = document.getElementById("contactCancelEditBtn");
+const contactFormTitle     = document.getElementById("contactFormTitle");
+const contactFormCard      = document.getElementById("contactFormCard");
+
+function startEditContact(id) {
+  const c = loadContacts().find((x) => x.id === id);
+  if (!c) return;
+  editContactIdEl.value = id;
+  firstNameInput.value    = c.firstName    || "";
+  familyNameInput.value   = c.familyName   || "";
+  phoneNumberInput.value  = c.phoneNumber  || "";
+  notesInput.value        = c.notes        || "";
+  preferencesInput.value  = c.preferences  || "";
+  savedMessageSelect.value = c.customMessageLabel ? "" : "";
+  auPairSelect.value      = c.auPairId     || "";
+  contactFormTitle.textContent = "Edit Contact";
+  contactSubmitBtn.textContent = "Save Changes";
+  contactCancelEditBtn.style.display = "inline-block";
+  contactFormCard.scrollIntoView({ behavior: "smooth", block: "start" });
+  populateSavedMessageSelect();
+  updateFormPreview();
+}
+
+function resetContactForm() {
+  editContactIdEl.value = "";
+  contactForm.reset();
+  contactFormTitle.textContent = "Add a Contact";
+  contactSubmitBtn.textContent = "Add Contact";
+  contactCancelEditBtn.style.display = "none";
+  updateFormPreview();
+}
+
+contactCancelEditBtn.addEventListener("click", resetContactForm);
+
 contactForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const saved = selectedSavedMessage();
+  const editId = editContactIdEl.value;
   const contacts = loadContacts();
+
+  if (editId) {
+    // Update existing contact
+    const idx = contacts.findIndex((x) => x.id === editId);
+    if (idx !== -1) {
+      contacts[idx] = {
+        ...contacts[idx],
+        firstName: firstNameInput.value.trim(),
+        familyName: familyNameInput.value.trim(),
+        phoneNumber: phoneNumberInput.value.trim(),
+        notes: notesInput.value.trim(),
+        preferences: preferencesInput.value.trim(),
+        customTemplate: saved ? saved.text : contacts[idx].customTemplate || "",
+        customMessageLabel: saved ? saved.name : contacts[idx].customMessageLabel || "",
+        paragraphIds: getCheckedParagraphIds(),
+        auPairId: auPairSelect.value || "",
+      };
+    }
+    saveContacts(contacts);
+    resetContactForm();
+    renderAll();
+    return;
+  }
+
   contacts.push({
     id: crypto.randomUUID(),
     firstName: firstNameInput.value.trim(),
@@ -534,6 +599,22 @@ templateInput.addEventListener("input", () => {
   renderFamilyList();
   updateFormPreview();
 });
+// ── Migrate old contacts: add missing fields ──────────────────────────────────
+(function migrateContacts() {
+  const contacts = loadContacts();
+  let changed = false;
+  const now = Date.now();
+  contacts.forEach((c) => {
+    if (!c.createdAt) { c.createdAt = now; changed = true; }
+    if (!c.auPairId) { c.auPairId = ""; changed = true; }
+    if (!c.paragraphIds) { c.paragraphIds = []; changed = true; }
+    if (!c.statusChangedAt && c.status && c.status !== "pending") {
+      c.statusChangedAt = now; changed = true;
+    }
+  });
+  if (changed) saveContacts(contacts);
+})();
+
 renderAll();
 updateFormPreview();
 populateAuPairSelect();

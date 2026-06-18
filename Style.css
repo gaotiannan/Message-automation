@@ -450,6 +450,16 @@ button:hover {
   background: #6d28d9;
 }
 
+.edit-contact-btn {
+  background: #3b82f6;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+.edit-contact-btn:hover {
+  background: #2563eb;
+}
+
 /* AI Chat Widget */
 
 .status-badge-ap {

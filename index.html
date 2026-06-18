@@ -60,9 +60,10 @@
     <div id="savedMessageList"></div>
   </section>
 
-  <section class="card">
-    <h2>Add a Contact</h2>
+  <section class="card" id="contactFormCard">
+    <h2 id="contactFormTitle">Add a Contact</h2>
     <form id="contactForm">
+      <input type="hidden" id="editContactId" value="">
       <div class="form-row">
         <label for="firstName">First Name</label>
         <input type="text" id="firstName" required>
@@ -101,7 +102,10 @@
       </div>
       <p class="hint">Message preview:</p>
       <p id="formMessagePreview" class="message-preview"></p>
-      <button type="submit">Add Contact</button>
+      <div style="display:flex;gap:8px;">
+        <button type="submit" id="contactSubmitBtn">Add Contact</button>
+        <button type="button" id="contactCancelEditBtn" class="secondary-btn" style="display:none;">Cancel Edit</button>
+      </div>
     </form>
   </section>
 
