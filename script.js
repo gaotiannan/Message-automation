@@ -511,7 +511,7 @@ updateFormPreview();
 // ── AI Chat Widget ──────────────────────────────────────────────────────────
 
 const CHAT_API_KEY_STORAGE = "chat_claude_api_key";
-const CLAUDE_ENDPOINT = "https://api.anthropic.com/v1/messages";
+const CLAUDE_ENDPOINT = "/api/chat";
 const CHAT_SYSTEM_PROMPT =
   "You are an AI assistant helping craft WhatsApp outreach messages to contact families. " +
   "Help the user write warm, personalized messages. Keep suggestions concise and practical. " +
@@ -570,15 +570,9 @@ async function sendChat() {
   try {
     const res = await fetch(CLAUDE_ENDPOINT, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-client-side-api-key-access": "true",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-haiku-4-5",
-        max_tokens: 1024,
+        api_key: apiKey,
         system: CHAT_SYSTEM_PROMPT,
         messages: chatHistory,
       }),
