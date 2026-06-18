@@ -187,11 +187,15 @@
     <button id="chatClose" type="button">✕</button>
   </div>
   <div id="chatApiKeySection" class="chat-api-key-section">
-    <p class="hint" style="margin:0 0 6px;">Enter your Anthropic API key (get one free at console.anthropic.com):</p>
+    <p class="hint" style="margin:0 0 6px;">Anthropic API key (<a href="https://console.anthropic.com/settings/billing" target="_blank" style="color:#25d366;">billing</a> · <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#25d366;">get key</a>):</p>
     <div style="display:flex;gap:6px;">
       <input type="password" id="chatApiKey" placeholder="sk-ant-...">
       <button type="button" id="chatSaveKey">Save</button>
     </div>
+  </div>
+  <div id="chatKeyStatus" class="chat-key-status" style="display:none;">
+    <span id="chatKeyLabel"></span>
+    <button type="button" id="chatChangeKey">Change key</button>
   </div>
   <div id="chatMessages" class="chat-messages"></div>
   <div class="chat-input-row">

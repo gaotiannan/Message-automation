@@ -524,6 +524,9 @@ const chatCloseBtn = document.getElementById("chatClose");
 const chatApiKeySection = document.getElementById("chatApiKeySection");
 const chatApiKeyInput = document.getElementById("chatApiKey");
 const chatSaveKeyBtn = document.getElementById("chatSaveKey");
+const chatKeyStatus = document.getElementById("chatKeyStatus");
+const chatKeyLabel = document.getElementById("chatKeyLabel");
+const chatChangeKeyBtn = document.getElementById("chatChangeKey");
 const chatMessagesEl = document.getElementById("chatMessages");
 const chatInput = document.getElementById("chatInput");
 const chatSendBtn = document.getElementById("chatSend");
@@ -539,7 +542,15 @@ function saveApiKey(key) {
 }
 
 function refreshApiKeySection() {
-  chatApiKeySection.style.display = loadApiKey() ? "none" : "block";
+  const key = loadApiKey();
+  if (key) {
+    chatApiKeySection.style.display = "none";
+    chatKeyStatus.style.display = "flex";
+    chatKeyLabel.textContent = "Key: " + key.slice(0, 14) + "…";
+  } else {
+    chatApiKeySection.style.display = "block";
+    chatKeyStatus.style.display = "none";
+  }
 }
 
 function appendChatMessage(role, text) {
@@ -622,6 +633,13 @@ chatSaveKeyBtn.addEventListener("click", () => {
   saveApiKey(key);
   chatApiKeyInput.value = "";
   refreshApiKeySection();
+});
+
+chatChangeKeyBtn.addEventListener("click", () => {
+  localStorage.removeItem(CHAT_API_KEY_STORAGE);
+  chatApiKeyInput.value = "";
+  refreshApiKeySection();
+  chatApiKeyInput.focus();
 });
 
 chatSendBtn.addEventListener("click", sendChat);
