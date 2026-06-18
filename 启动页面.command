@@ -1,3 +1,4 @@
 #!/bin/bash
 cd "$(dirname "$0")"
-python3 server.py
+open http://localhost:8765
+python3 -m http.server 8765
