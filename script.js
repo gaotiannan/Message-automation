@@ -507,3 +507,132 @@ templateInput.addEventListener("input", () => {
 });
 renderAll();
 updateFormPreview();
+
+// ── AI Chat Widget ──────────────────────────────────────────────────────────
+
+const CHAT_API_KEY_STORAGE = "chat_openai_api_key";
+const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+const CHAT_SYSTEM_PROMPT =
+  "You are an AI assistant helping craft WhatsApp outreach messages to contact families. " +
+  "Help the user write warm, personalized messages. Keep suggestions concise and practical. " +
+  "When the user asks for a message, produce ready-to-paste text they can save to the Saved Messages section. " +
+  "You can use {name} and {family} as placeholders for the contact's first name and family name.";
+
+const chatToggleBtn = document.getElementById("chatToggle");
+const chatPanel = document.getElementById("chatPanel");
+const chatCloseBtn = document.getElementById("chatClose");
+const chatApiKeySection = document.getElementById("chatApiKeySection");
+const chatApiKeyInput = document.getElementById("chatApiKey");
+const chatSaveKeyBtn = document.getElementById("chatSaveKey");
+const chatMessagesEl = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatInput");
+const chatSendBtn = document.getElementById("chatSend");
+
+const chatHistory = [];
+
+function loadApiKey() {
+  return localStorage.getItem(CHAT_API_KEY_STORAGE) || "";
+}
+
+function saveApiKey(key) {
+  localStorage.setItem(CHAT_API_KEY_STORAGE, key.trim());
+}
+
+function refreshApiKeySection() {
+  chatApiKeySection.style.display = loadApiKey() ? "none" : "block";
+}
+
+function appendChatMessage(role, text) {
+  const div = document.createElement("div");
+  div.className = `chat-msg chat-msg-${role}`;
+  div.textContent = text;
+  chatMessagesEl.appendChild(div);
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const apiKey = loadApiKey();
+  if (!apiKey) {
+    appendChatMessage("error", "Please save your OpenAI API key first.");
+    return;
+  }
+  const userText = chatInput.value.trim();
+  if (!userText) return;
+
+  chatInput.value = "";
+  appendChatMessage("user", userText);
+  chatHistory.push({ role: "user", content: userText });
+
+  const thinkingEl = appendChatMessage("thinking", "Thinking…");
+  chatSendBtn.disabled = true;
+
+  try {
+    const res = await fetch(OPENAI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: CHAT_SYSTEM_PROMPT },
+          ...chatHistory,
+        ],
+      }),
+    });
+
+    const data = await res.json();
+
+    chatMessagesEl.removeChild(thinkingEl);
+
+    if (!res.ok) {
+      const errMsg = data?.error?.message || `API error ${res.status}`;
+      appendChatMessage("error", `Error: ${errMsg}`);
+      chatHistory.pop();
+    } else {
+      const reply = data.choices?.[0]?.message?.content || "(no response)";
+      appendChatMessage("assistant", reply);
+      chatHistory.push({ role: "assistant", content: reply });
+    }
+  } catch (err) {
+    chatMessagesEl.removeChild(thinkingEl);
+    appendChatMessage("error", `Network error: ${err.message}`);
+    chatHistory.pop();
+  } finally {
+    chatSendBtn.disabled = false;
+  }
+}
+
+chatToggleBtn.addEventListener("click", () => {
+  const isVisible = chatPanel.style.display !== "none";
+  chatPanel.style.display = isVisible ? "none" : "flex";
+  if (!isVisible) {
+    refreshApiKeySection();
+    chatInput.focus();
+  }
+});
+
+chatCloseBtn.addEventListener("click", () => {
+  chatPanel.style.display = "none";
+});
+
+chatSaveKeyBtn.addEventListener("click", () => {
+  const key = chatApiKeyInput.value.trim();
+  if (!key.startsWith("sk-")) {
+    alert("That doesn't look like a valid OpenAI key — it should start with sk-");
+    return;
+  }
+  saveApiKey(key);
+  chatApiKeyInput.value = "";
+  refreshApiKeySection();
+});
+
+chatSendBtn.addEventListener("click", sendChat);
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+});
