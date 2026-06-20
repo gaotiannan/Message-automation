@@ -2,6 +2,7 @@ const CONTACTS_KEY = "outreach_contacts";
 const TEMPLATE_KEY = "outreach_template";
 const SAVED_MESSAGES_KEY = "outreach_saved_messages";
 const PARAGRAPHS_KEY = "outreach_paragraphs";
+const AU_PAIRS_KEY = "outreach_au_pairs";
 
 const contactForm = document.getElementById("contactForm");
 const firstNameInput = document.getElementById("firstName");
@@ -720,8 +721,6 @@ chatSendBtn.addEventListener("click", sendChat);
 chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); } });
 
 // ── Au Pair Tracker ──────────────────────────────────────────────────────────
-
-const AU_PAIRS_KEY = "outreach_au_pairs";
 
 const apToggleBtn  = document.getElementById("apToggle");
 const apSearch     = document.getElementById("apSearch");
